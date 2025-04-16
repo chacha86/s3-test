@@ -65,16 +65,27 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ buildImageAndPush ]
 
+    permissions:
+      id-token: write  # OIDC 토큰 발급 허용
+      contents: read   # GitHub 리포지토리 읽기 (checkout용 등)
+
     steps:
       - name: AWS 인증 구성 (OIDC로 Assume)
-      - uses: aws-actions/configure-aws-credentials@v2
-      - with:
-        - role-to-assume: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/github-actions-ssm-role
-        - aws-region: ap-northeast-2  # 또는 본인의 리전
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/github-actions-ssm-role
+          aws-region: ap-northeast-2
+
+      - name: set lower case owner name
+        run: echo "OWNER_LC=${OWNER,,}" >> ${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
       - name: AWS SSM Send-Command
         uses: peterkimzz/aws-ssm-send-command@master
         id: ssm
         with:
+          aws-region: ap-northeast-2
           instance-ids: "i-097b759b696bcfd26"
           working-directory: /
           comment: Deploy
