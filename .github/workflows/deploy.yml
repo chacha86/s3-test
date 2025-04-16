@@ -81,14 +81,17 @@ jobs:
         env:
           OWNER: '${{ github.repository_owner }}'
 
-      - name: EC2에 명령 전송 (SSM)
-        uses: aws-actions/aws-cli-action@v1
-        with:
-          aws-region: ap-northeast-2
-          command: |
-            aws ssm send-command \
-              --document-name "AWS-RunShellScript" \
-              --comment "GitHub Actions 배포" \
-              --instance-ids "i-097b759b696bcfd26" \
-              --parameters commands="docker pull ghcr.io/${{ env.OWNER_LC }}/app20250415:latest; docker stop app1 2>/dev/null; docker rm app1 2>/dev/null; docker run -d --name app1 -p 8080:8080 ghcr.io/${{ env.OWNER_LC }}/app20250415:latest" \
-              --output text
+      - name: SSM으로 Docker 배포 명령 실행
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "배포 명령 실행" \
+            --instance-ids "i-097b759b696bcfd26" \
+            --parameters commands="\
+              docker pull ghcr.io/${{ env.OWNER_LC }}/app20250415:latest && \
+              docker stop app1 2>/dev/null || true && \
+              docker rm app1 2>/dev/null || true && \
+              docker run -d --name app1 -p 8080:8080 ghcr.io/${{ env.OWNER_LC }}/app20250415:latest && \
+              docker rmi \$(docker images -f 'dangling=true' -q)" \
+            --region ap-northeast-2 \
+            --output text
